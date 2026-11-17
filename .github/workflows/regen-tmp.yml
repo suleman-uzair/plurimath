@@ -1,0 +1,19 @@
+name: regen-tmp
+on: push
+permissions: { contents: read }
+jobs:
+  regen:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v5
+      - run: git submodule update --init submodules/plurimath-testsuite
+      - uses: ruby/setup-ruby@v1
+        with: { ruby-version: "4.0.1", bundler-cache: true }
+      - run: bundle exec ruby scripts/docs/format_specs.rb
+      - run: bundle exec ruby scripts/docs/asciimath_tables.rb --amath "$(bundle info amath --path)"
+      - run: bundle exec ruby scripts/docs/format_specs.rb --check && bundle exec ruby scripts/docs/asciimath_tables.rb --amath "$(bundle info amath --path)" --check
+      - run: git diff -- docs > regen.patch; git diff --stat -- docs
+        if: always()
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: regen-patch, path: regen.patch }
